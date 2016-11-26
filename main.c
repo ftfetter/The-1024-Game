@@ -6,20 +6,8 @@
 
 int main(int argc, char *argv[]) 
 {
-	int modo=0;
 
-	
-	printf("Digite um modo <0 == teste><0 != jogo>: ");
-	scanf("%d",&modo);
-	
 	startGame(NORMAL);
-	/*
-	if(modo)
-	{
-		startGame(NORMAL);
-	}else
-	{
-		teste();
-	}*/
+
 	return 0;
 }
