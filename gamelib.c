@@ -76,31 +76,76 @@ void addBlockUp(int size)
 	table[size-1][pos] = blck;
 }
 
-int checkTable(int size)
+int checkGame(int size)
 {
-	int i,j,count=0;
+	int i,j;
 	
-	for(i=0;i<size;i++)
+	for(i=0;i<size;i++)			 // percorre o tabuleiro inteiro em busca de um bloco com valor 1024
 	{
 		for(j=0;j<size;j++)
 		{
-			if(table[i][j].value==1024)
+			if(table[i][j].value==1024) 
 			{
-				return 1;	
+				// se encontrado o bloco, retorna 2 indicando que o jogador venceu o jogo
+				return 2;	
 			}
-			if(table[i][j].value>0)
-			{
-				count++;	
-			}	
 		}
 	}
-	if(count==(size*size))
+	
+	// se não encontrou, retorna o valor de checkTable() que retornará 0 se ainda restar movimentos possíveis ou 1 no caso contrário
+	return checkTable(size);
+}
+
+int checkTable(int size)
+{
+	int i,j;
+	
+	for(i=0;i<size-1;i++)			// percorrendo o tabuleiro sem passar pela coluna mais a direita
 	{
-		return 2;
-	}else
-	{
-		return 0;
+		for(j=0;j<size-1;j++)		// e sem passar pela linha mais inferior
+		{
+			if(table[i][j].value)	// se o valor do bloco atual não for zero, checar: 
+			{
+				if(table[i+1][j].value == 0 || table[i][j+1].value == 0) // se os blocos próximos ao atual são zero
+				{
+					return 0;			// existe um movimento possível
+				}
+				if(table[i][j].value == table[i][j+1].value) // se o bloco atual e o de baixo têm o mesmo valor
+				{
+					return 0;			// existe um movimento possível
+				}
+				if(table[i][j].value == table[i+1][j].value) // ou se o bloco atual e o da direita têm o mesmo valor
+				{
+					return 0;			// existe um movimento possível
+				}
+							
+			}else		// se o próprio bloco for zero
+			{
+				return 0;	// existe movimento possível
+			}
+		}
 	}
+	// com isso foi checados QUASE todos os blocos
+	// faltou o do canto inferior direito (table[size-1][size-1])
+	// faremos os mesmos testes de antes mas focado nesse bloco e comparando com os blocos acima e à esquerda dele
+	if(table[size-1][size-1].value)	// se o valor do bloco não for zero, checar: 
+	{
+		// como já testamos se os blocos superior e a esquerda eram zero anteriormente, pulamos a verificação
+		if(table[size-1][size-1].value == table[size-2][size-1].value) // se o bloco atual e o acima têm o mesmo valor
+		{
+			return 0;			// existe um movimento possível
+		}
+		if(table[size-1][size-1].value == table[size-1][size-2].value) // ou se o bloco atual e o à esquerda têm o mesmo valor
+		{
+			return 0;			// existe um movimento possível
+		}			
+		
+	}else		// se o próprio bloco for zero
+	{
+		return 0;	// existe movimento possível
+	}
+	
+	return 1;   // se a função chegou até aqui depois de tudo verificado, não existem movimentos possíveis (retorna 1)
 }
 
 void control(char key, int size)
@@ -111,42 +156,33 @@ void control(char key, int size)
 	{
 		case UP:
 			toUp(size);
-			if(checkTable(size)!=2)
-				addBlockUp(size);
-			else
-				endGame(2);
+			addBlockUp(size);
 			break;
 		case LEFT:
 			toLeft(size);
-			if(checkTable(size)!=2)
-				addBlockLeft(size);
-			else
-				endGame(2);
+			addBlockLeft(size);
 			break;
 		case DOWN:
 			toDown(size);
-			if(checkTable(size)!=2)
-				addBlockDown(size);
-			else
-				endGame(2);
+			addBlockDown(size);
 			break;
 		case RIGHT:
 			toRight(size);
-			if(checkTable(size)!=2)
-				addBlockRight(size);
-			else
-				endGame(2);
+			addBlockRight(size);
 			break;
+		case ESC:
+			endGame(plyr);
 	}
 }
 
-void endGame(int end)
+void endGame(PLAYER plyr)
 {
-	if(end==2)
-	{
-		clrscr();
-		printf("GAME OVER");
-	}
+	clrscr();
+	//printLoseMessage();
+	printf("Fim de jogo. \n\n Pressione 'ESC' para voltar ao Menu Principal.");
+	setRecord(plyr);
+	if(getKey()==ESC)
+		showMenu();
 }
 
 BLOCK eraseBlock(BLOCK blck)
@@ -180,6 +216,28 @@ char getKey()
     }while(teste==0);
 
     return code;
+}
+
+int getRecords(PLAYER *players)
+{
+	FILE *point_arq;
+	int count=0;
+	
+	point_arq = fopen("record","rb");
+	if(point_arq==NULL)			// Caso não haja nenhum recorde salvo, a função retornará 0
+		return 0;		
+	else
+	{
+		while(!feof(point_arq))
+		{
+			if(!fread(&players[count],sizeof(PLAYER),1,point_arq)==1)
+				printf("Erro ao ler arquivo binário.");
+			count++;
+		}
+		fclose(point_arq);
+	}
+	
+	return count;
 }
 
 BLOCK increaseBlock(BLOCK blck)
@@ -261,6 +319,42 @@ void printPlayer(char mode[])
 	printf("  Nome: %-15s  Modo: %-13s   Record: %5d   Pontuacao: %5d ", plyr.name, mode, record, plyr.score);
 }
 
+void printLoseMessage()
+{
+	clrscr();
+	printf("\n");	
+	printf("                 ##      ##  ##########  ##########  ##########\n");
+	printf("                  ##    ##   ##      ##  ##          ##\n");
+	printf("                   ##  ##    ##      ##  ##          #######\n");
+	printf("                    ####     ##      ##  ##          ##\n");
+	printf("                     ##      ##########  ##########  ##########\n");
+	printf("\n");
+	printf("     #########   ##########  #########   ########    ##########  ##      ##\n");
+	printf("     ##      ##  ##          ##      ##  ##     ##   ##          ##      ##\n");
+	printf("     #########   #######     #########   ##      ##  #######     ##      ##\n");
+	printf("     ##          ##          ##   ###    ##     ##   ##          ##      ##\n");
+	printf("     ##          ##########  ##     ###  ########    ##########   ########\n");
+	printf("\n\n              PRESSIONE 'ESC' PARA VOLTAR AO MENU PRINCIPAL");
+}
+
+void printWinMessage()
+{
+	clrscr();
+	printf("\n");
+	printf("                 ##      ##  ##########  ##########  ##########\n");
+	printf("                  ##    ##   ##      ##  ##          ##\n");
+	printf("                   ##  ##    ##      ##  ##          #######\n");
+	printf("                    ####     ##      ##  ##          ##\n");
+	printf("                     ##      ##########  ##########  ##########\n");
+	printf("\n");
+	printf("     ##      ##  ##########  ####    ##  ##########  ##########  ##      ##\n");
+	printf("      ##    ##   ##          ## ##   ##  ##          ##          ##      ##\n");
+	printf("       ##  ##    #######     ##  ##  ##  ##          #######     ##      ##\n");
+	printf("        ####     ##          ##   ## ##  ##          ##          ##      ##\n");
+	printf("         ##      ##########  ##    ####  ##########  ##########   ########\n");
+	printf("\n\n                  DESEJA CONTINUAR JOGANDO <N/S>: ");
+}
+
 void refreshTable(int size, char mode[])
 {
 	int i, j;
@@ -323,6 +417,43 @@ PLAYER setPlayer()
 	return plyr;
 }
 
+void setRecord(PLAYER player)
+{
+	FILE *point_arq;
+	PLAYER records[RECORDS];
+	int i=0, tst=1, n_players=0, flag=0;
+	
+	n_players = getRecords(records);		// Pega o numero de registros e salva-os no vetor 'records'
+	
+	point_arq = fopen("record","wb");
+	if(point_arq==NULL)
+		printf("Erro ao abrir o arquivo binario.");
+	else
+	{
+		if(n_players==0)		// Se n_player for 0, é porque o recorde está sendo criado agora
+		{
+			if(fwrite(&player,sizeof(PLAYER),1,point_arq)!=1)	// Só adiciona o recorde
+				printf("Erro ao escrever arquivo.");
+		}
+		for(i=0;i<n_players;i++)
+		{
+			if(records[i].score<player.score && flag==0)			// Verifica se é um recorde e se já foi adicionado um recorde (para não adicionar de novo)
+			{
+				if(fwrite(&player,sizeof(PLAYER),1,point_arq)!=1)			// Adiciona o novo recorde
+					printf("Erro ao escrever arquivo binario.");
+				if(fwrite(&records[i],sizeof(PLAYER),1,point_arq)!=1)		// Adiciona o anterior para que ele não seja apagado
+					printf("Erro ao escrever arquivo binario.");
+				flag++;														// Indica que um jogador já foi adicionado
+			}else
+			{
+				if(fwrite(&records[i],sizeof(PLAYER),1,point_arq)!=1)		// Matém o recorde antigo e continua a verificação
+					printf("Erro ao escrever arquivo binario.");
+			}
+		}
+		fclose(point_arq);
+	}
+}
+
 void setTable(int size)
 {
 	int i,j;
@@ -340,24 +471,115 @@ void setTable(int size)
 	}
 }
 
+void setTxtRecord()
+{
+	FILE *point_arq;
+	PLAYER records[RECORDS];
+	int i, n_players;
+	
+	n_players = getRecords(records);		// Pega o numero de registros e salva-os no vetor 'records'
+	
+	point_arq = fopen("recordes.txt","w");
+	if(point_arq==NULL || n_players==0)
+		printf("Erro ao abrir o arquivo texto.");
+	else
+	{
+		for(i=0;i<n_players;i++)
+		{
+			if(records[i].win>0)
+			{
+				if(fprintf(point_arq,"Jogador: %-15s || Pontuacao: %5d || Ganhou \n", records[i].name, records[i].score)<0)
+					printf("Erro ao escrever o arquivo texto.");
+			}else
+			{
+				if(fprintf(point_arq,"Jogador: %-15s || Pontuacao: %5d || Nao ganhou \n", records[i].name, records[i].score)<0)
+					printf("Erro ao escrever o arquivo texto.");
+			}
+		}
+	}
+	fclose(point_arq);
+}
+
 void showMenu()
 {
-	printf("THE 1024 GAME");
-	printf("Created by Felipe T. Fetter & Hector Lacerda");
+	int option;
+
+	clrscr();	
+	printf("THE 1024 GAME\n");
+	printf("Created by Felipe T. Fetter & Hector G. Lacerda\n");
 	printf("\n \n \n \n");
-	printf("MODO CLASSICO");
-	printf("MODO FACIL");
-	printf("MODO PERSONALIZADO");
-	printf("VER O RANKING");
-	printf("SAIR DO JOGO");
+	printf("MODO CLASSICO<1>\n");
+	printf("MODO FACIL<2>\n");
+	printf("MODO PERSONALIZADO<3>\n");
+	printf("VER O RANKING<4>\n");
+	printf("SAIR DO JOGO<5>\n");
+	
+	scanf("%d", &option);
+	
+	switch(option)
+	{
+		case 1:
+			startGame(NORMAL);
+			break;
+		case 3:
+			showMenuPersonGame();
+			break;
+		case 4:
+			showMenuRank();
+			break;
+	}
+}
+
+void showMenuPersonGame()
+{
+	int option;
+	
+	clrscr();
+	printf("TABULEIRO 5x5 <1>\n");
+	printf("TABULEIRO 6x6 <2>\n\n");
+	printf("VOLTAR AO MENU PRINCIPAL <3>");
+	
+	scanf("%d", &option);
+	
+	switch(option)
+	{
+		case 1:
+			startGame(MEDIUM);
+			break;
+		case 2:
+			startGame(LARGE);
+			break;
+		case 3:
+			showMenu();
+			break;
+	}
 }
 
 void showMenuRank()
 {
-	printf("EXIBIR RANK");
-	printf("RESETAR RANK");
-	printf("SALVAR RANK");
-	printf("VOLTAR AO MENU PRINCIPAL");
+	int option;
+	
+	clrscr();
+	printf("EXIBIR RANK<1>\n");
+	printf("RESETAR RANK<2>\n");
+	printf("SALVAR RANK<3>\n");
+	printf("VOLTAR AO MENU PRINCIPAL<4>\n");
+	
+	scanf("%d", &option);
+	
+	switch(option)
+	{
+		case 1:
+			break;
+		case 2:
+			break;
+		case 3:
+			setTxtRecord();
+			break;
+		case 4:
+			showMenu();
+			break;
+	}
 }
 
 void showPlayers(PLAYER vecPlyr[], int score, int qntPlyr)
@@ -412,9 +634,13 @@ void startGame(int size)
 	{
 		control(getKey(),size);
 		refreshTable(size, mode);
-		if(checkTable(size)==1)
-			endGame(1);
-	}while(1);
+		end = checkGame(size);
+	}while(end==0);
+
+	if(end==2)
+		winGame(plyr);
+	else
+		endGame(plyr);
 }
 
 void toDown(int size)
@@ -483,4 +709,13 @@ void toUp(int size)
 			}
 		}
 	}
+}
+
+void winGame(PLAYER plyr)
+{
+	char resp;
+	
+	printWinMessage();
+	scanf("%c", &resp);
+	
 }

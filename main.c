@@ -7,7 +7,7 @@
 int main(int argc, char *argv[]) 
 {
 
-	startGame(NORMAL);
-
+	showMenu();
+	
 	return 0;
 }
